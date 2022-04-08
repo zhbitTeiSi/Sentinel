@@ -21,7 +21,7 @@ import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
 import com.alibaba.csp.sentinel.dashboard.discovery.MachineInfo;
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
 import com.alibaba.csp.sentinel.dashboard.repository.rule.RuleRepository;
-import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleHandler;
+import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleEntityHandler;
 import com.alibaba.csp.sentinel.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +48,7 @@ public class FlowControllerV1 {
     RuleRepository<FlowRuleEntity, Long> repository;
 
     @Autowired
-    DynamicRuleHandler<FlowRuleEntity> ruleHandler;
+    DynamicRuleEntityHandler<FlowRuleEntity> ruleEntityHandler;
 
     @GetMapping("/rules")
     @AuthAction(PrivilegeType.READ_RULE)
@@ -66,8 +66,10 @@ public class FlowControllerV1 {
             return Result.ofFail(-1, "port can't be null");
         }
         try {
-            List<FlowRuleEntity> rules = ruleHandler.loadRules(app);
-            rules = repository.saveAll(rules);
+            List<FlowRuleEntity> rules = repository.findAllByApp(app);
+            if (rules.isEmpty()) {
+                rules = repository.saveAll(ruleEntityHandler.loadEntityList(app, ip, port));
+            }
             return Result.ofSuccess(rules);
         } catch (Throwable throwable) {
             logger.error("Error when querying flow rules", throwable);
@@ -257,6 +259,6 @@ public class FlowControllerV1 {
 
     private void publishRules(String app, String ip, Integer port) throws Exception {
         List<FlowRuleEntity> rules = repository.findAllByMachine(MachineInfo.of(app, ip, port));
-        ruleHandler.publishRules(app, rules);
+        ruleEntityHandler.publishEntityList(app, rules);
     }
 }

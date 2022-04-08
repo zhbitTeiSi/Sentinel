@@ -96,12 +96,17 @@
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.ctrip.framework.apollo</groupId>
+            <artifactId>apollo-client</artifactId>
+            <version>1.9.1</version>
+        </dependency>
 
         <!-- for Nacos rule publisher sample -->
         <dependency>
-            <groupId>com.alibaba.csp</groupId>
-            <artifactId>sentinel-datasource-nacos</artifactId>
-<!--            <scope>test</scope>-->
+            <groupId>com.alibaba.nacos</groupId>
+            <artifactId>nacos-client</artifactId>
+            <version>1.3.0</version>
         </dependency>
         <!-- for Apollo rule publisher sample -->
         <dependency>

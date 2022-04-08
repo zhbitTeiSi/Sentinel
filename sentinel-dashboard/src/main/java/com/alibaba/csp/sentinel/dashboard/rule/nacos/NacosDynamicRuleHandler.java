@@ -1,63 +1,72 @@
 package com.alibaba.csp.sentinel.dashboard.rule.nacos;
 
 import com.alibaba.csp.sentinel.dashboard.rule.AbstractDynamicRuleHandler;
-import com.alibaba.csp.sentinel.dashboard.rule.RuleConverter;
+import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleEntityHandler;
+import com.alibaba.csp.sentinel.dashboard.rule.convert.RuleConverter;
 import com.alibaba.nacos.api.config.ConfigService;
+import com.alibaba.nacos.api.exception.NacosException;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
 
-public abstract class NacosDynamicRuleHandler<T> extends AbstractDynamicRuleHandler<String, T> {
+import static com.alibaba.csp.sentinel.dashboard.rule.nacos.NacosConstatns.DEFAULT_TIMEOUT;
 
-    private static final String DEFAULT_GROUP_ID = "SENTINEL_GROUP";
-    private static final int DEFAULT_TIMEOUT = 3000;
+public abstract class NacosDynamicRuleHandler<R, E> extends AbstractDynamicRuleHandler<R> implements DynamicRuleEntityHandler<E> {
 
-    protected String groupId;
-    protected int timeout;
-    protected ConfigService configService;
+    protected final String groupId;
+    protected final int timeout;
+    protected final ConfigService configService;
+    protected final String dataIdPostfix;
 
-    public NacosDynamicRuleHandler(final ConfigService configService, RuleConverter<String, List<T>> converter) {
-        this(configService, DEFAULT_GROUP_ID, DEFAULT_TIMEOUT, converter);
+    public NacosDynamicRuleHandler(final ConfigService configService,
+                                   final String groupId,
+                                   final String dataIdPostfix,
+                                   final RuleConverter<R> converter) {
+        this(configService, groupId, dataIdPostfix, DEFAULT_TIMEOUT, converter);
     }
 
-    public NacosDynamicRuleHandler(final ConfigService configService, String groupId,
-                                   RuleConverter<String, List<T>> converter) {
-        this(configService, groupId, DEFAULT_TIMEOUT, converter);
-    }
-
-    public NacosDynamicRuleHandler(final ConfigService configService, final String groupId, int timeout, RuleConverter<String, List<T>> converter) {
+    public NacosDynamicRuleHandler(final ConfigService configService,
+                                   final String groupId,
+                                   final String dataIdPostfix,
+                                   final int timeout,
+                                   final RuleConverter<R> converter) {
         super(converter);
         Preconditions.checkArgument(configService != null, "configService can not be null.");
         Preconditions.checkArgument(StringUtils.isNotEmpty(groupId), "groupId can not be null.");
+        Preconditions.checkArgument(StringUtils.isNotEmpty(groupId), "dataIdPostfix can not be null.");
         this.configService = configService;
         this.groupId = groupId;
+        this.dataIdPostfix = dataIdPostfix;
         this.timeout = timeout;
     }
 
     @Override
-    public List<T> loadRules(String appName) throws Exception {
+    public List<R> loadRules(String appName) {
         Preconditions.checkArgument(StringUtils.isNotEmpty(appName), "appName cannot be empty.");
-        String rules = configService.getConfig(getDataId(appName), groupId, timeout);
-        if (StringUtils.isEmpty(rules)) {
-            return Collections.emptyList();
+        try {
+            String rules = configService.getConfig(NacosConstatns.getRuleDataId(appName, dataIdPostfix), groupId, timeout);
+            if (StringUtils.isEmpty(rules)) {
+                return Collections.emptyList();
+            }
+            return Lists.newArrayList(converter.deserialize(rules));
+        } catch (NacosException e) {
+            throw new RuntimeException("[Nacos] loadRules error.", e);
         }
-        return converter.deserialize(rules);
     }
 
     @Override
-    public void publishRules(String appName, List<T> rules) throws Exception {
+    public void publishRules(String appName, List<R> rules) {
         Preconditions.checkArgument(StringUtils.isNotEmpty(appName), "appName cannot be empty.");
         if (rules == null) {
             return;
         }
-        configService.publishConfig(getDataId(appName), groupId, converter.serialize(rules));
-    }
-
-    abstract String getRuleId();
-
-    private String getDataId(String appName) {
-        return String.format("%s-%s", appName, getRuleId());
+        try {
+            configService.publishConfig(NacosConstatns.getRuleDataId(appName, dataIdPostfix), groupId, converter.serialize(rules));
+        } catch (NacosException e) {
+            throw new RuntimeException("[Nacos] publishRules error.", e);
+        }
     }
 }

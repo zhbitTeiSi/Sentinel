@@ -19,12 +19,15 @@ package com.alibaba.csp.sentinel.dashboard.rule.nacos;
  * @author Eric Zhao
  * @since 1.4.0
  */
-public final class NacosConfigUtil {
+public final class NacosConstatns {
 
-    public static final String GROUP_ID = "SENTINEL_GROUP";
-    
-    public static final String FLOW_DATA_ID_POSTFIX = "-flow-rules";
-    public static final String PARAM_FLOW_DATA_ID_POSTFIX = "-param-rules";
+    public static final String DEFAULT_GROUP_ID = "SENTINEL_GROUP";
+    public static final int DEFAULT_TIMEOUT = 3000;
+    public static final String DEFAULT_DATA_ID_POSTFIX = "sentinel-rules";
+
+    public static final String FLOW_RULE = "flow-rules";
+    public static final String PARAM_FLOW_RULE = "param-flow-rules";
+
     public static final String CLUSTER_MAP_DATA_ID_POSTFIX = "-cluster-map";
 
     /**
@@ -38,5 +41,7 @@ public final class NacosConfigUtil {
     public static final String SERVER_FLOW_CONFIG_DATA_ID_POSTFIX = "-cs-flow-config";
     public static final String SERVER_NAMESPACE_SET_DATA_ID_POSTFIX = "-cs-namespace-set";
 
-    private NacosConfigUtil() {}
+    public static String getRuleDataId(String app, String ruleId) {
+        return String.format("%s-%s", app, ruleId);
+    }
 }

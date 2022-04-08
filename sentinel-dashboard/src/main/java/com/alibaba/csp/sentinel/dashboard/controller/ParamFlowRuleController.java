@@ -25,7 +25,7 @@ import com.alibaba.csp.sentinel.dashboard.discovery.AppManagement;
 import com.alibaba.csp.sentinel.dashboard.discovery.MachineInfo;
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
 import com.alibaba.csp.sentinel.dashboard.repository.rule.RuleRepository;
-import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleHandler;
+import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleEntityHandler;
 import com.alibaba.csp.sentinel.dashboard.util.VersionUtils;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
 import com.alibaba.csp.sentinel.util.StringUtil;
@@ -54,7 +54,7 @@ public class ParamFlowRuleController {
     @Autowired
     RuleRepository<ParamFlowRuleEntity, Long> repository;
     @Autowired
-    DynamicRuleHandler<ParamFlowRuleEntity> ruleHandler;
+    DynamicRuleEntityHandler<ParamFlowRuleEntity> ruleEntityHandler;
 
     private boolean checkIfSupported(String app, String ip, int port) {
         try {
@@ -87,10 +87,12 @@ public class ParamFlowRuleController {
             return unsupportedVersion();
         }
         try {
-            List<ParamFlowRuleEntity> rules = ruleHandler.loadRules(app);
-            repository.saveAll(rules);
+            List<ParamFlowRuleEntity> rules = repository.findAllByApp(app);
+            if (rules.isEmpty()) {
+                rules = ruleEntityHandler.loadEntityList(app, ip, port);
+            }
             return Result.ofSuccess(rules);
-        } catch (ExecutionException ex) {
+        } catch (Exception ex) {
             logger.error("Error when querying parameter flow rules", ex.getCause());
             if (isNotSupported(ex.getCause())) {
                 return unsupportedVersion();
@@ -246,7 +248,7 @@ public class ParamFlowRuleController {
 
     private void publishRules(String app, String ip, Integer port) throws Exception {
         List<ParamFlowRuleEntity> rules = repository.findAllByMachine(MachineInfo.of(app, ip, port));
-        ruleHandler.publishRules(app, rules);
+        ruleEntityHandler.publishEntityList(app, rules);
     }
 
     private <R> Result<R> unsupportedVersion() {
