@@ -10,9 +10,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class JsonRuleConverter<T> extends RuleConverter<T> {
+public class RuleJsonConverter<T> extends RuleConverter<T> {
 
-    public JsonRuleConverter(Class<T> ruleClass) {
+    public RuleJsonConverter(Class<T> ruleClass) {
         super(ruleClass);
     }
 

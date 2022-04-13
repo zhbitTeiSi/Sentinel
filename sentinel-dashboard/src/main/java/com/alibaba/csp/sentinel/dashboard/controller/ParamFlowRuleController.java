@@ -38,6 +38,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Eric Zhao
@@ -48,6 +49,8 @@ import java.util.concurrent.ExecutionException;
 public class ParamFlowRuleController {
 
     private final Logger logger = LoggerFactory.getLogger(ParamFlowRuleController.class);
+
+    private final AtomicBoolean loadFromDynamicSource = new AtomicBoolean(false);
 
     @Autowired
     AppManagement appManagement;
@@ -87,11 +90,11 @@ public class ParamFlowRuleController {
             return unsupportedVersion();
         }
         try {
-            List<ParamFlowRuleEntity> rules = repository.findAllByApp(app);
-            if (rules.isEmpty()) {
-                rules = ruleEntityHandler.loadEntityList(app, ip, port);
+            if (loadFromDynamicSource.compareAndSet(false, true)) {
+                List<ParamFlowRuleEntity> rules = ruleEntityHandler.loadEntityList(app, ip, port);
+                repository.saveAll(rules);
             }
-            return Result.ofSuccess(rules);
+            return Result.ofSuccess(repository.findAllByApp(app));
         } catch (Exception ex) {
             logger.error("Error when querying parameter flow rules", ex.getCause());
             if (isNotSupported(ex.getCause())) {

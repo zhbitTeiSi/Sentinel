@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Flow rule controller.
@@ -43,6 +44,8 @@ import java.util.concurrent.ExecutionException;
 public class FlowControllerV1 {
 
     private final Logger logger = LoggerFactory.getLogger(FlowControllerV1.class);
+
+    private final AtomicBoolean loadFromDynamicSource = new AtomicBoolean(false);
 
     @Autowired
     RuleRepository<FlowRuleEntity, Long> repository;
@@ -66,11 +69,11 @@ public class FlowControllerV1 {
             return Result.ofFail(-1, "port can't be null");
         }
         try {
-            List<FlowRuleEntity> rules = repository.findAllByApp(app);
-            if (rules.isEmpty()) {
-                rules = repository.saveAll(ruleEntityHandler.loadEntityList(app, ip, port));
+            if (loadFromDynamicSource.compareAndSet(false, true)) {
+                List<FlowRuleEntity> rules = ruleEntityHandler.loadEntityList(app, ip, port);
+                repository.saveAll(rules);
             }
-            return Result.ofSuccess(rules);
+            return Result.ofSuccess(repository.findAllByApp(app));
         } catch (Throwable throwable) {
             logger.error("Error when querying flow rules", throwable);
             return Result.ofThrowable(-1, throwable);

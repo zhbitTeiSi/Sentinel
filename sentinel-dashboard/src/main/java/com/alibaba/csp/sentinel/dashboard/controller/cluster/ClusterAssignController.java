@@ -15,24 +15,21 @@
  */
 package com.alibaba.csp.sentinel.dashboard.controller.cluster;
 
-import java.util.Collections;
-import java.util.Set;
-
-import com.alibaba.csp.sentinel.util.StringUtil;
-
-import com.alibaba.csp.sentinel.dashboard.domain.cluster.ClusterAppFullAssignRequest;
+import com.alibaba.csp.sentinel.dashboard.cluster.ClusterHandler;
+import com.alibaba.csp.sentinel.dashboard.domain.Result;
 import com.alibaba.csp.sentinel.dashboard.domain.cluster.ClusterAppAssignResultVO;
+import com.alibaba.csp.sentinel.dashboard.domain.cluster.ClusterAppFullAssignRequest;
 import com.alibaba.csp.sentinel.dashboard.domain.cluster.ClusterAppSingleServerAssignRequest;
 import com.alibaba.csp.sentinel.dashboard.service.ClusterAssignService;
-import com.alibaba.csp.sentinel.dashboard.domain.Result;
+import com.alibaba.csp.sentinel.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author Eric Zhao
@@ -47,20 +44,23 @@ public class ClusterAssignController {
     @Autowired
     private ClusterAssignService clusterAssignService;
 
+    @Autowired
+    ClusterHandler clusterHandler;
+
     @PostMapping("/all_server/{app}")
     public Result<ClusterAppAssignResultVO> apiAssignAllClusterServersOfApp(@PathVariable String app,
                                                                             @RequestBody
-                                                                                ClusterAppFullAssignRequest assignRequest) {
+                                                                                    ClusterAppFullAssignRequest assignRequest) {
         if (StringUtil.isEmpty(app)) {
             return Result.ofFail(-1, "app cannot be null or empty");
         }
         if (assignRequest == null || assignRequest.getClusterMap() == null
-            || assignRequest.getRemainingList() == null) {
+                || assignRequest.getRemainingList() == null) {
             return Result.ofFail(-1, "bad request body");
         }
         try {
             return Result.ofSuccess(clusterAssignService.applyAssignToApp(app, assignRequest.getClusterMap(),
-                assignRequest.getRemainingList()));
+                    assignRequest.getRemainingList()));
         } catch (Throwable throwable) {
             logger.error("Error when assigning full cluster servers for app: " + app, throwable);
             return Result.ofFail(-1, throwable.getMessage());
@@ -77,8 +77,13 @@ public class ClusterAssignController {
             return Result.ofFail(-1, "bad request body");
         }
         try {
-            return Result.ofSuccess(clusterAssignService.applyAssignToApp(app, Collections.singletonList(assignRequest.getClusterMap()),
-                assignRequest.getRemainingList()));
+//            return Result.ofSuccess(clusterAssignService.applyAssignToApp(app, Collections.singletonList(assignRequest.getClusterMap()),
+//                    assignRequest.getRemainingList()));
+            clusterHandler.publishClusterMap(app, Collections.singletonList(assignRequest.getClusterMap()));
+            ClusterAppAssignResultVO resultVO = new ClusterAppAssignResultVO();
+            resultVO.setFailedClientSet(new HashSet<>());
+            resultVO.setFailedServerSet(new HashSet<>());
+            return Result.ofSuccess(resultVO);
         } catch (Throwable throwable) {
             logger.error("Error when assigning single cluster servers for app: " + app, throwable);
             return Result.ofFail(-1, throwable.getMessage());

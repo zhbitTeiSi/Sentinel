@@ -15,6 +15,10 @@ public class NacosDataSourceProperties {
 
     private String groupId = "SENTINEL_GROUP";
 
+    private NacosDataSourceRuleProperties rule;
+
+    private NacosDataSourceClusterProperties cluster;
+
     public String getServerAddr() {
         return serverAddr;
     }
@@ -29,5 +33,21 @@ public class NacosDataSourceProperties {
 
     public void setGroupId(String groupId) {
         this.groupId = groupId;
+    }
+
+    public NacosDataSourceRuleProperties getRule() {
+        return rule;
+    }
+
+    public void setRule(NacosDataSourceRuleProperties rule) {
+        this.rule = rule;
+    }
+
+    public NacosDataSourceClusterProperties getCluster() {
+        return cluster;
+    }
+
+    public void setCluster(NacosDataSourceClusterProperties cluster) {
+        this.cluster = cluster;
     }
 }

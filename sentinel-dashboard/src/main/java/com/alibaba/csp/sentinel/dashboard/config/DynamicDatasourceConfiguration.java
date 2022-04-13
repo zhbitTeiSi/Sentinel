@@ -1,38 +1,41 @@
-package com.alibaba.csp.sentinel.dashboard.rule.nacos;
+package com.alibaba.csp.sentinel.dashboard.config;
 
-import com.alibaba.csp.sentinel.dashboard.config.NacosDataSourceProperties;
+import com.alibaba.csp.sentinel.dashboard.cluster.nacos.NacosClusterHandler;
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.ParamFlowRuleEntity;
-import com.alibaba.csp.sentinel.dashboard.rule.convert.JsonRuleConverter;
+import com.alibaba.csp.sentinel.dashboard.rule.convert.RuleJsonConverter;
+import com.alibaba.csp.sentinel.dashboard.rule.nacos.NacosDynamicRuleHandler;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
 import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRule;
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.config.ConfigService;
 import com.alibaba.nacos.api.exception.NacosException;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.Resource;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Configuration
-public class NacosDynamicRuleConfig {
+@EnableConfigurationProperties(SentinelDashboardProperties.class)
+public class DynamicDatasourceConfiguration {
 
-    @Resource
-    NacosDataSourceProperties nacosDataSourceProperties;
+    private final NacosDataSourceProperties properties;
+
+    public DynamicDatasourceConfiguration(SentinelDashboardProperties dashboardProperties) {
+        this.properties = dashboardProperties.getDatasource().getNacos();
+    }
 
     @Bean
     public ConfigService nacosConfigService() throws NacosException {
-        return NacosFactory.createConfigService(nacosDataSourceProperties.getServerAddr());
+        return NacosFactory.createConfigService(properties.getServerAddr());
     }
 
     @Bean
     public NacosDynamicRuleHandler<FlowRule, FlowRuleEntity> flowRuleHandler(ConfigService configService) {
         return new NacosDynamicRuleHandler<FlowRule, FlowRuleEntity>(configService,
-                Optional.ofNullable(nacosDataSourceProperties.getGroupId()).orElse(NacosConstatns.DEFAULT_GROUP_ID),
-                NacosConstatns.FLOW_RULE, new JsonRuleConverter<>(FlowRule.class)) {
+                properties.getGroupId(), properties.getRule().getFlowRulePostfix(), new RuleJsonConverter<>(FlowRule.class)) {
 
             @Override
             public List<FlowRuleEntity> loadEntityList(String appName, String ip, Integer port) {
@@ -50,8 +53,7 @@ public class NacosDynamicRuleConfig {
     @Bean
     public NacosDynamicRuleHandler<ParamFlowRule, ParamFlowRuleEntity> paramFlowRuleHandler(ConfigService configService) {
         return new NacosDynamicRuleHandler<ParamFlowRule, ParamFlowRuleEntity>(configService,
-                Optional.ofNullable(nacosDataSourceProperties.getGroupId()).orElse(NacosConstatns.DEFAULT_GROUP_ID),
-                NacosConstatns.PARAM_FLOW_RULE, new JsonRuleConverter<>(ParamFlowRule.class)) {
+                properties.getGroupId(), properties.getRule().getParamFlowRulePostfix(), new RuleJsonConverter<>(ParamFlowRule.class)) {
 
             @Override
             public List<ParamFlowRuleEntity> loadEntityList(String appName, String ip, Integer port) {
@@ -64,6 +66,11 @@ public class NacosDynamicRuleConfig {
                 publishRules(appName, rules);
             }
         };
+    }
+
+    @Bean
+    public NacosClusterHandler clusterHandler(ConfigService configService) {
+        return new NacosClusterHandler(configService, properties.getGroupId(), properties.getCluster().getClusterMapPostfix());
     }
 
 }
